@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>订单积分工具（内部使用）</title>
+
+    <meta name="robots" content="noindex, nofollow" />
+
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        max-width: 960px;
+        margin: 24px auto;
+        padding: 16px;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 26px;
+        margin-bottom: 16px;
+        font-weight: 700;
+      }
+      h2 {
+        font-size: 20px;
+        margin: 0 0 12px;
+        font-weight: 700;
+      }
+
+      .section {
+        margin-top: 24px;
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid #eee;
+        background: #fafafa;
+      }
+
+      .section-header {
+        border-bottom: 3px solid #f0127f;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+      }
+
+      label {
+        display: block;
+        margin-top: 8px;
+        font-weight: 600;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        font-size: 14px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+
+      .points-result {
+        margin-top: 12px;
+        padding: 12px;
+        border-left: 6px solid #f0127f;
+        background: #f8f8f8;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .points-result span {
+        font-weight: 700;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 220px;
+        box-sizing: border-box;
+        font-family: monospace;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        resize: vertical;
+      }
+
+      .status {
+        font-size: 12px;
+        margin-top: 4px;
+        color: #888;
+        min-height: 16px;
+      }
+      .status--success {
+        color: #1b8a1b;
+      }
+      .status--error {
+        color: #c0392b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>订单积分工具（内部使用）</h1>
+
+    <!-- 问题订单记录（自动保存） -->
+    <div class="section">
+      <div class="section-header">
+        <h2>问题订单记录（自动保存）</h2>
+      </div>
+      <textarea
+        id="issue-log"
+        placeholder="在这里记录有问题的订单、备注等，例如：&#10;2025xxxx 订单号 xxx，说明……"
+      ></textarea>
+      <div id="issue-status" class="status"></div>
+    </div>
+
+    <!-- 订单积分计算器（自动计算） -->
+    <div class="section">
+      <div class="section-header">
+        <h2>订单积分计算器（自动计算）</h2>
+      </div>
+
+      <label for="subtotal">Subtotal（小计）</label>
+      <input type="number" id="subtotal" step="0.01" />
+
+      <label for="discount">Discount（折扣）</label>
+      <input type="number" id="discount" step="0.01" />
+
+      <div class="points-result">
+        积分：<span id="points-result">0.00</span>
+      </div>
+    </div>
+
+    <!-- 发放记录日志 -->
+    <div class="section">
+      <div class="section-header">
+        <h2>发放记录日志</h2>
+      </div>
+      <textarea
+        id="send-log"
+        placeholder="记录已发放积分的订单号、金额、时间等……"
+      ></textarea>
+      <div id="send-status" class="status"></div>
+    </div>
+
+    <script>
+      // ======= 积分计算部分 =======
+      const subtotalInput = document.getElementById("subtotal");
+      const discountInput = document.getElementById("discount");
+      const pointsSpan = document.getElementById("points-result");
+
+      function calcPoints() {
+        const subtotal = parseFloat(subtotalInput.value) || 0;
+        const discount = parseFloat(discountInput.value) || 0;
+        const base = Math.max(subtotal - discount, 0);
+
+        // ⚠️ 这里是积分比例：5%
+        const points = base * 0.05; // 如果你要 5%，改成 0.05
+        pointsSpan.textContent = points.toFixed(2);
+      }
+
+      subtotalInput.addEventListener("input", calcPoints);
+      discountInput.addEventListener("input", calcPoints);
+
+      // ======= 日志保存 / 加载部分 =======
+      const issueTextarea = document.getElementById("issue-log");
+      const sendTextarea = document.getElementById("send-log");
+      const issueStatus = document.getElementById("issue-status");
+      const sendStatus = document.getElementById("send-status");
+
+      function setStatus(text, type) {
+        issueStatus.textContent = text;
+        sendStatus.textContent = text;
+
+        issueStatus.className = "status";
+        sendStatus.className = "status";
+
+        if (type === "success") {
+          issueStatus.classList.add("status--success");
+          sendStatus.classList.add("status--success");
+        } else if (type === "error") {
+          issueStatus.classList.add("status--error");
+          sendStatus.classList.add("status--error");
+        }
+      }
+
+      async function loadLogs() {
+        try {
+          const res = await fetch("/api/logs");
+          const data = await res.json();
+
+          let issue_log = data.issue_log ?? "";
+          let send_log = data.send_log ?? "";
+
+          // 避免之前存过对象类型导致显示 [object Object]
+          if (typeof issue_log === "object") {
+            issue_log = JSON.stringify(issue_log, null, 2);
+          }
+          if (typeof send_log === "object") {
+            send_log = JSON.stringify(send_log, null, 2);
+          }
+
+          issueTextarea.value = issue_log;
+          sendTextarea.value = send_log;
+
+          setStatus("已加载最新记录", "success");
+        } catch (err) {
+          console.error(err);
+          setStatus("加载日志失败", "error");
+        }
+      }
+
+      function setupAutoSave() {
+        let timer;
+        function save() {
+          clearTimeout(timer);
+          timer = setTimeout(async () => {
+            try {
+              await fetch("/api/logs", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  issue_log: issueTextarea.value,
+                  send_log: sendTextarea.value,
+                }),
+              });
+              setStatus("已自动保存最新记录", "success");
+            } catch (err) {
+              console.error(err);
+              setStatus("保存失败，请稍后重试", "error");
+            }
+          }, 1500);
+        }
+
+        issueTextarea.addEventListener("input", save);
+        sendTextarea.addEventListener("input", save);
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadLogs();
+        setupAutoSave();
+      });
+    </script>
+  </body>
+</html>
