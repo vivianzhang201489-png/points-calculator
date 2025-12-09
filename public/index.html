@@ -143,7 +143,7 @@
     </div>
 
     <script>
-      // ======= 积分计算部分 =======
+      // ======= 积分计算部分（保持不变） =======
       const subtotalInput = document.getElementById("subtotal");
       const discountInput = document.getElementById("discount");
       const pointsSpan = document.getElementById("points-result");
@@ -153,21 +153,21 @@
         const discount = parseFloat(discountInput.value) || 0;
         const base = Math.max(subtotal - discount, 0);
 
-        // ⚠️ 这里是积分比例：5%
-        const points = base * 0.05; // 如果你要 5%，改成 0.05
+        // 这里是积分比例：5%
+        const points = base * 0.05;
         pointsSpan.textContent = points.toFixed(2);
       }
 
       subtotalInput.addEventListener("input", calcPoints);
       discountInput.addEventListener("input", calcPoints);
 
-      // ======= 日志保存 / 加载部分 =======
+      // ======= 日志保存 / 加载部分（和新 server.js 对接） =======
       const issueTextarea = document.getElementById("issue-log");
       const sendTextarea = document.getElementById("send-log");
       const issueStatus = document.getElementById("issue-status");
       const sendStatus = document.getElementById("send-status");
 
-      function setStatus(text, type) {
+      function setStatus(text, type = "normal") {
         issueStatus.textContent = text;
         sendStatus.textContent = text;
 
@@ -183,15 +183,17 @@
         }
       }
 
+      // 1）页面加载时，从服务器读取 logs.json
       async function loadLogs() {
         try {
           const res = await fetch("/api/logs");
-          const data = await res.json();
+          const json = await res.json();
 
-          let issue_log = data.issue_log ?? "";
-          let send_log = data.send_log ?? "";
+          if (!json.ok) throw new Error("not ok");
 
-          // 避免之前存过对象类型导致显示 [object Object]
+          let { issue_log = "", send_log = "" } = json.data || {};
+
+          // 保险起见，避免 [object Object]
           if (typeof issue_log === "object") {
             issue_log = JSON.stringify(issue_log, null, 2);
           }
@@ -202,39 +204,50 @@
           issueTextarea.value = issue_log;
           sendTextarea.value = send_log;
 
-          setStatus("已加载最新记录", "success");
+          setStatus("已从服务器加载最新记录 ✅", "success");
         } catch (err) {
           console.error(err);
-          setStatus("加载日志失败", "error");
+          setStatus("加载日志失败，当前内容为空。", "error");
         }
       }
 
+      // 2）监听输入，自动保存到服务器（1.5 秒防抖）
       function setupAutoSave() {
         let timer;
-        function save() {
-          clearTimeout(timer);
-          timer = setTimeout(async () => {
-            try {
-              await fetch("/api/logs", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  issue_log: issueTextarea.value,
-                  send_log: sendTextarea.value,
-                }),
-              });
-              setStatus("已自动保存最新记录", "success");
-            } catch (err) {
-              console.error(err);
-              setStatus("保存失败，请稍后重试", "error");
-            }
-          }, 1500);
+
+        async function saveNow() {
+          try {
+            const body = {
+              issue_log: issueTextarea.value,
+              send_log: sendTextarea.value,
+            };
+
+            const res = await fetch("/api/logs", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(body),
+            });
+
+            const json = await res.json();
+            if (!json.ok) throw new Error("not ok");
+
+            setStatus("已自动保存到服务器 ✅", "success");
+          } catch (err) {
+            console.error(err);
+            setStatus("保存失败，请稍后重试 ❌", "error");
+          }
         }
 
-        issueTextarea.addEventListener("input", save);
-        sendTextarea.addEventListener("input", save);
+        function onChange() {
+          setStatus("正在编辑，稍后会自动保存……", "normal");
+          clearTimeout(timer);
+          timer = setTimeout(saveNow, 1500);
+        }
+
+        issueTextarea.addEventListener("input", onChange);
+        sendTextarea.addEventListener("input", onChange);
       }
 
       document.addEventListener("DOMContentLoaded", () => {

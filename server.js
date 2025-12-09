@@ -1,57 +1,49 @@
 // server.js
 const express = require("express");
-const path = require("path");
 const fs = require("fs").promises;
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 数据文件路径（跟 server.js 同一目录）
-const DATA_FILE = path.join(__dirname, "data.json");
+// 日志文件路径（和 server.js 同目录）
+const DATA_FILE = path.join(__dirname, "logs.json");
 
-// 读数据
+// 中间件：解析 JSON、提供静态页面
+app.use(express.json());
+app.use(express.static("public"));
+
+// 读取文件中的数据
 async function readData() {
   try {
     const text = await fs.readFile(DATA_FILE, "utf8");
-    const json = JSON.parse(text);
-
-    // 确保有这两个字段
-    return {
-      issue_log: json.issue_log ?? "",
-      send_log: json.send_log ?? "",
-    };
+    return JSON.parse(text);
   } catch (err) {
-    // 文件不存在或解析失败，就返回空
-    return { issue_log: "", send_log: "" };
+    // 文件不存在时，返回默认空内容
+    if (err.code === "ENOENT") {
+      return { issue_log: "", send_log: "" };
+    }
+    throw err;
   }
 }
 
-// 写数据
+// 写入文件
 async function writeData(data) {
-  const safeData = {
-    issue_log: data.issue_log ?? "",
-    send_log: data.send_log ?? "",
-  };
-  await fs.writeFile(DATA_FILE, JSON.stringify(safeData, null, 2), "utf8");
+  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
 }
 
-app.use(express.json());
-
-// 静态文件（你的前端页面）
-app.use(express.static("public"));
-
-// 读取日志
+// 读取日志接口
 app.get("/api/logs", async (req, res) => {
   try {
     const data = await readData();
-    res.json(data);
+    res.json({ ok: true, data });
   } catch (err) {
     console.error("读取日志失败:", err);
-    res.status(500).json({ ok: false, error: "read_failed" });
+    res.status(500).json({ ok: false, message: "read_failed" });
   }
 });
 
-// 保存日志
+// 保存日志接口
 app.post("/api/logs", async (req, res) => {
   try {
     const { issue_log = "", send_log = "" } = req.body || {};
@@ -59,7 +51,7 @@ app.post("/api/logs", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("保存日志失败:", err);
-    res.status(500).json({ ok: false, error: "save_failed" });
+    res.status(500).json({ ok: false, message: "save_failed" });
   }
 });
 
