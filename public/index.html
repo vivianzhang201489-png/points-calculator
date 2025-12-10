@@ -269,32 +269,9 @@
       }
 
       // 2）监听输入，自动保存到服务器（1.5 秒防抖）
-      function setupAutoSave() {
-        let timer;
-        function onChange() {
-          clearTimeout(timer);
-          timer = setTimeout(() => {
-            saveLogs("auto");
-          }, 1500);
-        }
-
-        issueTextarea.addEventListener("input", onChange);
-        sendTextarea.addEventListener("input", onChange);
-      }
-
-        function onChange() {
-          setStatus("正在编辑，稍后会自动保存……", "normal");
-          clearTimeout(timer);
-          timer = setTimeout(saveNow, 1500);
-        }
-
-        issueTextarea.addEventListener("input", onChange);
-        sendTextarea.addEventListener("input", onChange);
-      }
 
       document.addEventListener("DOMContentLoaded", () => {
         loadLogs();
-        setupAutoSave();
 
         // ⭐ 手动保存按钮
         const manualSaveBtn = document.getElementById("manual-save-btn");
