@@ -231,45 +231,27 @@
         const discount = parseFloat(discountInput.value) || 0;
         const base = Math.max(subtotal - discount, 0);
 
-        // ⚠️ 这里是积分比例：5%
-        const points = base * 0.05; // 5% 积分
+        // 积分比例：5%
+        const points = base * 0.05;
         pointsSpan.textContent = points.toFixed(2);
       }
 
       subtotalInput.addEventListener("input", calcPoints);
       discountInput.addEventListener("input", calcPoints);
 
-      // ======= 日志加载 / 保存部分（手动保存） =======
+      // ======= 日志加载 / 保存（手动保存，没有状态提示） =======
       const issueTextarea = document.getElementById("issue-log");
       const sendTextarea = document.getElementById("send-log");
-      const issueStatus = document.getElementById("issue-status");
-      const sendStatus = document.getElementById("send-status");
       const saveBtn = document.getElementById("save-btn");
-
-      // 共用状态提示：同时更新上下两个 status
-      function setStatus(text, type) {
-        if (!issueStatus || !sendStatus) return;
-
-        issueStatus.textContent = text;
-        sendStatus.textContent = text;
-
-        issueStatus.className = "status";
-        sendStatus.className = "status";
-
-        if (type === "success") {
-          issueStatus.classList.add("status--success");
-          sendStatus.classList.add("status--success");
-        } else if (type === "error") {
-          issueStatus.classList.add("status--error");
-          sendStatus.classList.add("status--error");
-        }
-      }
 
       // 1）页面加载时，从服务器读取最近一条记录
       async function loadLogs() {
         try {
           const res = await fetch("/api/logs");
-          if (!res.ok) throw new Error("not ok");
+          if (!res.ok) {
+            console.warn("加载日志接口返回非 200：", res.status);
+            return;
+          }
 
           const json = await res.json();
           const issue_log = json.issue_log ?? "";
@@ -277,26 +259,17 @@
 
           issueTextarea.value = issue_log;
           sendTextarea.value = send_log;
-
-          setStatus("已从服务器加载最新记录", "success");
         } catch (err) {
-          console.error(err);
-          setStatus("加载日志失败，当前内容为空。", "error");
+          console.error("加载日志失败：", err);
+          // 失败就保持文本框为空，不再提示
         }
       }
 
       // 2）手动保存：点击按钮时才把两块内容存到数据库
       async function saveLogsManually() {
-        if (!saveBtn) return;
-
-        const originalText = saveBtn.textContent;
-
         try {
-          // 按钮进入“保存中”状态
-          saveBtn.disabled = true;
-          saveBtn.textContent = "保存中…";
-
-          const res = await fetch("/api/logs", {
+          saveBtn.disabled = true; // 防止连点
+          await fetch("/api/logs", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -306,28 +279,19 @@
               send_log: sendTextarea.value,
             }),
           });
-
-          if (!res.ok) throw new Error("not ok");
-
-          setStatus("已保存到数据库 ✓", "success");
+          // 不再显示“已保存到数据库”，你已经在 Supabase 里看得到数据了
         } catch (err) {
-          console.error(err);
-          setStatus("保存失败，请稍后重试。", "error");
+          console.error("保存日志失败：", err);
+          // 也不在页面上显示错误，只在控制台打印
         } finally {
-          // 稍微停一下，让人看得到“保存中…”
-          setTimeout(() => {
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-          }, 300);
+          saveBtn.disabled = false;
         }
       }
 
       // 初始化
       document.addEventListener("DOMContentLoaded", () => {
-        loadLogs(); // 进页面自动加载一次
-        if (saveBtn) {
-          saveBtn.addEventListener("click", saveLogsManually); // 只在点击时保存
-        }
+        loadLogs(); // 进入页面时自动加载一次
+        saveBtn.addEventListener("click", saveLogsManually); // 点击按钮时保存
       });
     </script>
   </body>
