@@ -120,6 +120,7 @@
       }
 
       .status {
+        display: none !important;
         font-size: 12px;
         margin-top: 4px;
         color: #888;
@@ -131,6 +132,42 @@
       .status--error {
         color: #c0392b;
       }
+      .primary-btn {
+        display: inline-block;
+        padding: 10px 22px;
+        border-radius: 999px;
+        border: none;
+        background: #ff007a;
+        color: #fff;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: 0 3px 0 #c0005e;
+        transition:
+          transform 0.08s ease,
+          box-shadow 0.08s ease,
+          opacity 0.15s ease,
+          background 0.15s ease;
+      }
+
+      /* 鼠标放上去：稍微变亮一点 */
+      .primary-btn:hover:not(:disabled) {
+        background: #ff2a8a;
+      }
+
+      /* 按下去：有下压的感觉 */
+      .primary-btn:active:not(:disabled) {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 #c0005e;
+      }
+
+      /* 正在保存或禁用状态：半透明 + 不可点击 */
+      .primary-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+        transform: translateY(2px);
+      }
     </style>
   </head>
   <body>
@@ -138,13 +175,13 @@
 
     <!-- 顶部：手动保存按钮 -->
     <div class="save-bar">
-      <button id="save-btn" class="save-btn">手动保存所有记录</button>
+      <button id="save-btn" class="save-btn">手动保存记录</button>
     </div>
 
     <!-- 问题订单记录（手动保存） -->
     <div class="section">
       <div class="section-header">
-        <h2>问题订单记录（手动保存）</h2>
+        <h2>问题订单记录</h2>
       </div>
       <textarea
         id="issue-log"
@@ -156,7 +193,7 @@
     <!-- 订单积分计算器（自动计算） -->
     <div class="section">
       <div class="section-header">
-        <h2>订单积分计算器（自动计算）</h2>
+        <h2>积分计算器</h2>
       </div>
 
       <!-- 每一项单独占一行：Label 在上，输入框在下 -->
@@ -174,7 +211,7 @@
     <!-- 发放记录日志（手动保存） -->
     <div class="section">
       <div class="section-header">
-        <h2>发放记录日志（手动保存）</h2>
+        <h2>积分发放记录</h2>
       </div>
       <textarea
         id="send-log"
@@ -211,6 +248,8 @@
 
       // 共用状态提示：同时更新上下两个 status
       function setStatus(text, type) {
+        if (!issueStatus || !sendStatus) return;
+
         issueStatus.textContent = text;
         sendStatus.textContent = text;
 
@@ -248,7 +287,15 @@
 
       // 2）手动保存：点击按钮时才把两块内容存到数据库
       async function saveLogsManually() {
+        if (!saveBtn) return;
+
+        const originalText = saveBtn.textContent;
+
         try {
+          // 按钮进入“保存中”状态
+          saveBtn.disabled = true;
+          saveBtn.textContent = "保存中…";
+
           const res = await fetch("/api/logs", {
             method: "POST",
             headers: {
@@ -266,13 +313,21 @@
         } catch (err) {
           console.error(err);
           setStatus("保存失败，请稍后重试。", "error");
+        } finally {
+          // 稍微停一下，让人看得到“保存中…”
+          setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }, 300);
         }
       }
 
       // 初始化
       document.addEventListener("DOMContentLoaded", () => {
         loadLogs(); // 进页面自动加载一次
-        saveBtn.addEventListener("click", saveLogsManually); // 只在点击时保存
+        if (saveBtn) {
+          saveBtn.addEventListener("click", saveLogsManually); // 只在点击时保存
+        }
       });
     </script>
   </body>
