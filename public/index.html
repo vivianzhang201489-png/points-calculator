@@ -7,6 +7,25 @@
     <meta name="robots" content="noindex, nofollow" />
 
     <style>
+      /* 移除 number 输入框的上下箭头（spinner） */
+      .no-spinner::-webkit-outer-spin-button,
+      .no-spinner::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .no-spinner {
+        -moz-appearance: textfield; /* Firefox */
+        appearance: textfield;
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        margin-top: 4px;
+      }
+
       body {
         font-family:
           system-ui,
@@ -19,11 +38,13 @@
         padding: 16px;
         line-height: 1.5;
       }
+
       h1 {
         font-size: 26px;
         margin-bottom: 16px;
         font-weight: 700;
       }
+
       h2 {
         font-size: 20px;
         margin: 0 0 12px;
@@ -44,38 +65,9 @@
         margin-bottom: 12px;
       }
 
-      label {
-        display: block;
-        margin-top: 8px;
-        font-weight: 600;
-      }
-
-      input[type="number"] {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 8px;
-        font-size: 14px;
-        margin-top: 4px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-      }
-
-      .points-result {
-        margin-top: 12px;
-        padding: 12px;
-        border-left: 6px solid #f0127f;
-        background: #f8f8f8;
-        font-size: 18px;
-        font-weight: 700;
-      }
-
-      .points-result span {
-        font-weight: 700;
-      }
-
       textarea {
         width: 100%;
-        min-height: 220px;
+        min-height: 180px;
         box-sizing: border-box;
         font-family: monospace;
         padding: 8px;
@@ -90,58 +82,64 @@
         color: #888;
         min-height: 16px;
       }
+
       .status--success {
         color: #1b8a1b;
       }
+
       .status--error {
         color: #c0392b;
       }
+
+      /* 手动保存按钮 */
+      .btn-save {
+        background: #ff007a;
+        color: white;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .btn-save:hover {
+        background: #e0006c;
+      }
     </style>
   </head>
+
   <body>
-    <!-- ⭐ 新增：统一的手动保存按钮区域 -->
-    <div class="section" style="text-align: right">
-      <button
-        id="manual-save-btn"
-        style="
-          padding: 6px 16px;
-          border-radius: 4px;
-          border: none;
-          background: #f0127f;
-          color: #fff;
-          font-size: 14px;
-          cursor: pointer;
-        "
-      >
-        手动保存所有记录
-      </button>
-      <span id="manual-save-status" class="status"></span>
-    </div>
     <h1>订单积分工具（内部使用）</h1>
 
-    <!-- 问题订单记录（自动保存） -->
+    <!-- 手动保存按钮（靠左） -->
+    <div style="margin-bottom: 20px">
+      <button id="saveAllBtn" class="btn-save">手动保存所有记录</button>
+    </div>
+
+    <!-- 问题订单记录 -->
     <div class="section">
       <div class="section-header">
-        <h2>问题订单记录（自动保存）</h2>
+        <h2>问题订单记录（手动保存）</h2>
       </div>
+
       <textarea
         id="issue-log"
-        placeholder="在这里记录有问题的订单、备注等，例如：&#10;2025xxxx 订单号 xxx，说明……"
+        placeholder="在这里记录有问题的订单、备注等。例如：2025xxxx 订单号 xxx，说明……"
       ></textarea>
       <div id="issue-status" class="status"></div>
     </div>
 
-    <!-- 订单积分计算器（自动计算） -->
+    <!-- 订单积分计算 -->
     <div class="section">
       <div class="section-header">
         <h2>订单积分计算器（自动计算）</h2>
       </div>
 
       <label for="subtotal">Subtotal（小计）</label>
-      <input type="number" id="subtotal" step="0.01" />
+      <input type="text" id="subtotal" class="no-spinner" />
 
       <label for="discount">Discount（折扣）</label>
-      <input type="number" id="discount" step="0.01" />
+      <input type="text" id="discount" class="no-spinner" />
 
       <div class="points-result">
         积分：<span id="points-result">0.00</span>
@@ -151,8 +149,9 @@
     <!-- 发放记录日志 -->
     <div class="section">
       <div class="section-header">
-        <h2>发放记录日志</h2>
+        <h2>发放记录日志（手动保存）</h2>
       </div>
+
       <textarea
         id="send-log"
         placeholder="记录已发放积分的订单号、金额、时间等……"
@@ -161,7 +160,9 @@
     </div>
 
     <script>
-      // ======= 积分计算部分（保持不变） =======
+      // ===========================================================
+      // 积分自动计算
+      // ===========================================================
       const subtotalInput = document.getElementById("subtotal");
       const discountInput = document.getElementById("discount");
       const pointsSpan = document.getElementById("points-result");
@@ -171,117 +172,71 @@
         const discount = parseFloat(discountInput.value) || 0;
         const base = Math.max(subtotal - discount, 0);
 
-        // 这里是积分比例：5%
-        const points = base * 0.05;
+        const points = base * 0.05; // 5%
         pointsSpan.textContent = points.toFixed(2);
       }
 
       subtotalInput.addEventListener("input", calcPoints);
       discountInput.addEventListener("input", calcPoints);
 
-      // ======= 日志保存 / 加载部分（和新 server.js 对接） =======
-      const issueTextarea = document.getElementById("issue-log");
-      const sendTextarea = document.getElementById("send-log");
-      const issueStatus = document.getElementById("issue-status");
-      const sendStatus = document.getElementById("send-status");
-
-      function setStatus(text, type = "normal") {
-        issueStatus.textContent = text;
-        sendStatus.textContent = text;
-
-        issueStatus.className = "status";
-        sendStatus.className = "status";
-
-        if (type === "success") {
-          issueStatus.classList.add("status--success");
-          sendStatus.classList.add("status--success");
-        } else if (type === "error") {
-          issueStatus.classList.add("status--error");
-          sendStatus.classList.add("status--error");
-        }
-      }
-
-      // 1）页面加载时，从服务器读取 logs.json
+      // ===========================================================
+      // 从数据库加载
+      // ===========================================================
       async function loadLogs() {
         try {
-          const res = await fetch("/api/logs");
-          const json = await res.json();
+          const res = await fetch("/api/load");
+          const data = await res.json();
 
-          if (!json.ok) throw new Error("not ok");
+          document.getElementById("issue-log").value = data.issue_log || "";
+          document.getElementById("send-log").value = data.send_log || "";
 
-          let { issue_log = "", send_log = "" } = json.data || {};
-
-          // 保险起见，避免 [object Object]
-          if (typeof issue_log === "object") {
-            issue_log = JSON.stringify(issue_log, null, 2);
-          }
-          if (typeof send_log === "object") {
-            send_log = JSON.stringify(send_log, null, 2);
-          }
-
-          issueTextarea.value = issue_log;
-          sendTextarea.value = send_log;
-
-          setStatus("已从服务器加载最新记录 ✅", "success");
+          document.getElementById("issue-status").textContent = "加载成功";
+          document
+            .getElementById("issue-status")
+            .classList.add("status--success");
         } catch (err) {
           console.error(err);
-          setStatus("加载日志失败，当前内容为空。", "error");
-        }
-      }
-      // 通用保存函数：被自动保存和手动保存共用
-      async function saveLogs(showType = "auto") {
-        try {
-          const res = await fetch("/api/logs", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              issue_log: issueTextarea.value,
-              send_log: sendTextarea.value,
-            }),
-          });
-
-          if (!res.ok) throw new Error("save failed");
-
-          if (showType === "auto") {
-            setStatus("已自动保存最新记录", "success");
-          } else if (showType === "manual") {
-            const manualStatus = document.getElementById("manual-save-status");
-            manualStatus.textContent = "已手动保存 ✓";
-            manualStatus.className = "status status--success";
-            // 几秒后淡掉提示
-            setTimeout(() => {
-              manualStatus.textContent = "";
-              manualStatus.className = "status";
-            }, 3000);
-          }
-        } catch (err) {
-          console.error(err);
-          if (showType === "auto") {
-            setStatus("保存失败，请稍后重试", "error");
-          } else if (showType === "manual") {
-            const manualStatus = document.getElementById("manual-save-status");
-            manualStatus.textContent = "手动保存失败，请重试";
-            manualStatus.className = "status status--error";
-          }
+          document.getElementById("issue-status").textContent = "加载日志失败";
+          document
+            .getElementById("issue-status")
+            .classList.add("status--error");
         }
       }
 
-      // 2）监听输入，自动保存到服务器（1.5 秒防抖）
+      // ===========================================================
+      // 手动保存按钮
+      // ===========================================================
+      document
+        .getElementById("saveAllBtn")
+        .addEventListener("click", async () => {
+          const issue_log = document.getElementById("issue-log").value;
+          const send_log = document.getElementById("send-log").value;
 
-      document.addEventListener("DOMContentLoaded", () => {
-        loadLogs();
+          try {
+            await fetch("/api/save", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ issue_log, send_log }),
+            });
 
-        // ⭐ 手动保存按钮
-        const manualSaveBtn = document.getElementById("manual-save-btn");
-        if (manualSaveBtn) {
-          manualSaveBtn.addEventListener("click", () => {
-            // 点击时立即保存，并显示“手动保存”的提示
-            saveLogs("manual");
-          });
-        }
-      });
+            document.getElementById("issue-status").textContent =
+              "已保存到数据库 ✔";
+            document
+              .getElementById("issue-status")
+              .classList.add("status--success");
+          } catch (err) {
+            console.error(err);
+            document.getElementById("issue-status").textContent = "保存失败";
+            document
+              .getElementById("issue-status")
+              .classList.add("status--error");
+          }
+        });
+
+      // 页面加载时从数据库读取
+      loadLogs();
     </script>
   </body>
 </html>

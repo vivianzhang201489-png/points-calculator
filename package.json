@@ -2,12 +2,13 @@
   "name": "points-calculator",
   "version": "1.0.0",
   "description": "Internal reward points calculator and logs tool",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.87.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "@supabase/supabase-js": "^2.87.1"
   }
 }
