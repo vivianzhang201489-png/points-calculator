@@ -4,28 +4,11 @@
     <meta charset="UTF-8" />
     <title>订单积分工具（内部使用）</title>
 
+    <!-- 这个页面只内部使用，避免被搜索引擎收录 -->
     <meta name="robots" content="noindex, nofollow" />
 
     <style>
-      /* 移除 number 输入框的上下箭头（spinner） */
-      .no-spinner::-webkit-outer-spin-button,
-      .no-spinner::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-
-      .no-spinner {
-        -moz-appearance: textfield; /* Firefox */
-        appearance: textfield;
-        width: 100%;
-        padding: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        margin-top: 4px;
-      }
-
+      /* ===== 页面基础样式 ===== */
       body {
         font-family:
           system-ui,
@@ -38,13 +21,11 @@
         padding: 16px;
         line-height: 1.5;
       }
-
       h1 {
         font-size: 26px;
         margin-bottom: 16px;
         font-weight: 700;
       }
-
       h2 {
         font-size: 20px;
         margin: 0 0 12px;
@@ -65,9 +46,71 @@
         margin-bottom: 12px;
       }
 
+      /* ===== 顶部按钮 ===== */
+      .save-bar {
+        margin-bottom: 16px;
+        text-align: left; /* 按钮靠左 */
+      }
+
+      .save-btn {
+        display: inline-block;
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        background: #ff007a;
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .save-btn:hover {
+        opacity: 0.9;
+      }
+
+      label {
+        display: block;
+        margin-top: 8px;
+        font-weight: 600;
+      }
+
+      /* ===== 订单积分计算器输入框样式（每行一个输入，去掉上下小箭头） ===== */
+      input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        font-size: 14px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+
+      /* 去掉数字输入的上下调节按钮 */
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      .points-result {
+        margin-top: 12px;
+        padding: 12px;
+        border-left: 6px solid #f0127f;
+        background: #f8f8f8;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .points-result span {
+        font-weight: 700;
+      }
+
       textarea {
         width: 100%;
-        min-height: 180px;
+        min-height: 220px;
         box-sizing: border-box;
         font-family: monospace;
         padding: 8px;
@@ -82,76 +125,57 @@
         color: #888;
         min-height: 16px;
       }
-
       .status--success {
         color: #1b8a1b;
       }
-
       .status--error {
         color: #c0392b;
       }
-
-      /* 手动保存按钮 */
-      .btn-save {
-        background: #ff007a;
-        color: white;
-        padding: 10px 18px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .btn-save:hover {
-        background: #e0006c;
-      }
     </style>
   </head>
-
   <body>
     <h1>订单积分工具（内部使用）</h1>
 
-    <!-- 手动保存按钮（靠左） -->
-    <div style="margin-bottom: 20px">
-      <button id="saveAllBtn" class="btn-save">手动保存所有记录</button>
+    <!-- 顶部：手动保存按钮 -->
+    <div class="save-bar">
+      <button id="save-btn" class="save-btn">手动保存所有记录</button>
     </div>
 
-    <!-- 问题订单记录 -->
+    <!-- 问题订单记录（手动保存） -->
     <div class="section">
       <div class="section-header">
         <h2>问题订单记录（手动保存）</h2>
       </div>
-
       <textarea
         id="issue-log"
-        placeholder="在这里记录有问题的订单、备注等。例如：2025xxxx 订单号 xxx，说明……"
+        placeholder="在这里记录有问题的订单、备注等，例如：&#10;2025xxxx 订单号 xxx，说明……"
       ></textarea>
       <div id="issue-status" class="status"></div>
     </div>
 
-    <!-- 订单积分计算 -->
+    <!-- 订单积分计算器（自动计算） -->
     <div class="section">
       <div class="section-header">
         <h2>订单积分计算器（自动计算）</h2>
       </div>
 
+      <!-- 每一项单独占一行：Label 在上，输入框在下 -->
       <label for="subtotal">Subtotal（小计）</label>
-      <input type="text" id="subtotal" class="no-spinner" />
+      <input type="number" id="subtotal" step="0.01" />
 
       <label for="discount">Discount（折扣）</label>
-      <input type="text" id="discount" class="no-spinner" />
+      <input type="number" id="discount" step="0.01" />
 
       <div class="points-result">
         积分：<span id="points-result">0.00</span>
       </div>
     </div>
 
-    <!-- 发放记录日志 -->
+    <!-- 发放记录日志（手动保存） -->
     <div class="section">
       <div class="section-header">
         <h2>发放记录日志（手动保存）</h2>
       </div>
-
       <textarea
         id="send-log"
         placeholder="记录已发放积分的订单号、金额、时间等……"
@@ -160,9 +184,7 @@
     </div>
 
     <script>
-      // ===========================================================
-      // 积分自动计算
-      // ===========================================================
+      // ======= 积分计算部分 =======
       const subtotalInput = document.getElementById("subtotal");
       const discountInput = document.getElementById("discount");
       const pointsSpan = document.getElementById("points-result");
@@ -172,71 +194,86 @@
         const discount = parseFloat(discountInput.value) || 0;
         const base = Math.max(subtotal - discount, 0);
 
-        const points = base * 0.05; // 5%
+        // ⚠️ 这里是积分比例：5%
+        const points = base * 0.05; // 5% 积分
         pointsSpan.textContent = points.toFixed(2);
       }
 
       subtotalInput.addEventListener("input", calcPoints);
       discountInput.addEventListener("input", calcPoints);
 
-      // ===========================================================
-      // 从数据库加载
-      // ===========================================================
-      async function loadLogs() {
-        try {
-          const res = await fetch("/api/load");
-          const data = await res.json();
+      // ======= 日志加载 / 保存部分（手动保存） =======
+      const issueTextarea = document.getElementById("issue-log");
+      const sendTextarea = document.getElementById("send-log");
+      const issueStatus = document.getElementById("issue-status");
+      const sendStatus = document.getElementById("send-status");
+      const saveBtn = document.getElementById("save-btn");
 
-          document.getElementById("issue-log").value = data.issue_log || "";
-          document.getElementById("send-log").value = data.send_log || "";
+      // 共用状态提示：同时更新上下两个 status
+      function setStatus(text, type) {
+        issueStatus.textContent = text;
+        sendStatus.textContent = text;
 
-          document.getElementById("issue-status").textContent = "加载成功";
-          document
-            .getElementById("issue-status")
-            .classList.add("status--success");
-        } catch (err) {
-          console.error(err);
-          document.getElementById("issue-status").textContent = "加载日志失败";
-          document
-            .getElementById("issue-status")
-            .classList.add("status--error");
+        issueStatus.className = "status";
+        sendStatus.className = "status";
+
+        if (type === "success") {
+          issueStatus.classList.add("status--success");
+          sendStatus.classList.add("status--success");
+        } else if (type === "error") {
+          issueStatus.classList.add("status--error");
+          sendStatus.classList.add("status--error");
         }
       }
 
-      // ===========================================================
-      // 手动保存按钮
-      // ===========================================================
-      document
-        .getElementById("saveAllBtn")
-        .addEventListener("click", async () => {
-          const issue_log = document.getElementById("issue-log").value;
-          const send_log = document.getElementById("send-log").value;
+      // 1）页面加载时，从服务器读取最近一条记录
+      async function loadLogs() {
+        try {
+          const res = await fetch("/api/logs");
+          if (!res.ok) throw new Error("not ok");
 
-          try {
-            await fetch("/api/save", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ issue_log, send_log }),
-            });
+          const json = await res.json();
+          const issue_log = json.issue_log ?? "";
+          const send_log = json.send_log ?? "";
 
-            document.getElementById("issue-status").textContent =
-              "已保存到数据库 ✔";
-            document
-              .getElementById("issue-status")
-              .classList.add("status--success");
-          } catch (err) {
-            console.error(err);
-            document.getElementById("issue-status").textContent = "保存失败";
-            document
-              .getElementById("issue-status")
-              .classList.add("status--error");
-          }
-        });
+          issueTextarea.value = issue_log;
+          sendTextarea.value = send_log;
 
-      // 页面加载时从数据库读取
-      loadLogs();
+          setStatus("已从服务器加载最新记录", "success");
+        } catch (err) {
+          console.error(err);
+          setStatus("加载日志失败，当前内容为空。", "error");
+        }
+      }
+
+      // 2）手动保存：点击按钮时才把两块内容存到数据库
+      async function saveLogsManually() {
+        try {
+          const res = await fetch("/api/logs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              issue_log: issueTextarea.value,
+              send_log: sendTextarea.value,
+            }),
+          });
+
+          if (!res.ok) throw new Error("not ok");
+
+          setStatus("已保存到数据库 ✓", "success");
+        } catch (err) {
+          console.error(err);
+          setStatus("保存失败，请稍后重试。", "error");
+        }
+      }
+
+      // 初始化
+      document.addEventListener("DOMContentLoaded", () => {
+        loadLogs(); // 进页面自动加载一次
+        saveBtn.addEventListener("click", saveLogsManually); // 只在点击时保存
+      });
     </script>
   </body>
 </html>

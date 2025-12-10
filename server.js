@@ -1,88 +1,76 @@
-// server.js  — 用 ES Module 写法
-
-import express from "express";
-import { createClient } from "@supabase/supabase-js";
-import path from "path";
-import { fileURLToPath } from "url";
+// server.js
+const express = require("express");
+const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 让 __dirname 在 ES module 里也能用
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// 从环境变量里拿 Supabase 配置
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// ====== 静态文件（public/index.html 等）======
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json());
-
-// ====== Supabase 客户端 ======
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn(
-    "⚠️ Supabase 环境变量缺失，请在 Render Environment 里设置 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY",
-  );
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  console.error("❌ SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY 没有配置");
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// ====== API：读取日志（只取最新一条）======
+app.use(express.json());
+app.use(express.static("public"));
+
+// 读取最近一条日志
 app.get("/api/logs", async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("order_logs")
-      .select("*")
-      .order("id", { ascending: false })
-      .limit(1);
+      .select("issue_log, send_log")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(); // 表里没有数据时返回 null
 
     if (error) {
       console.error("Supabase select error:", error);
-      return res.status(500).json({ error: "database error" });
+      return res.status(500).json({ error: "db_select_failed" });
     }
 
-    const row = data && data[0] ? data[0] : { issue_log: "", send_log: "" };
+    if (!data) {
+      // 表里还没有记录
+      return res.json({ issue_log: "", send_log: "" });
+    }
 
     res.json({
-      data: {
-        issue_log: row.issue_log || "",
-        send_log: row.send_log || "",
-      },
+      issue_log: data.issue_log || "",
+      send_log: data.send_log || "",
     });
   } catch (err) {
-    console.error("GET /api/logs exception:", err);
-    res.status(500).json({ error: "server error" });
+    console.error("GET /api/logs error:", err);
+    res.status(500).json({ error: "server_error" });
   }
 });
 
-// ====== API：保存日志（插入一条新记录）======
+// 手动保存：往表里插入一条新记录
 app.post("/api/logs", async (req, res) => {
   try {
     const { issue_log, send_log } = req.body || {};
 
-    const { data, error } = await supabase
-      .from("order_logs")
-      .insert({
-        issue_log: issue_log || "",
-        send_log: send_log || "",
-      })
-      .select()
-      .single();
+    const { error } = await supabase.from("order_logs").insert({
+      issue_log: issue_log || "",
+      send_log: send_log || "",
+    });
 
     if (error) {
       console.error("Supabase insert error:", error);
-      return res.status(500).json({ error: "database error" });
+      return res.status(500).json({ error: "db_insert_failed" });
     }
 
-    res.json({ ok: true, data });
+    res.json({ ok: true });
   } catch (err) {
-    console.error("POST /api/logs exception:", err);
-    res.status(500).json({ error: "server error" });
+    console.error("POST /api/logs error:", err);
+    res.status(500).json({ error: "server_error" });
   }
 });
 
-// ====== 启动服务器 ======
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
