@@ -151,20 +151,29 @@
       const saveBtn = document.getElementById("save-btn");
 
       // 读取数据库中最近一条记录
+      // 1）页面加载时，从服务器读取最近一条记录
       async function loadLogs() {
+        console.log("🔍 调用 /api/logs 读取数据...");
+
         try {
-          console.log("🔍 调用 /api/logs 读取数据...");
           const res = await fetch("/api/logs");
-          console.log("🔍 /api/logs 响应状态:", res.status);
-          if (!res.ok) throw new Error("Failed to load");
+          console.log("🔍 /api/logs 响应状态：", res.status);
 
-          const data = await res.json();
-          console.log("🔍 /api/logs 返回数据:", data);
+          if (!res.ok) throw new Error("not ok");
 
-          issueTextarea.value = data.issue_log ?? "";
-          sendTextarea.value = data.send_log ?? "";
-        } catch (e) {
-          console.error("加载失败：", e);
+          const json = await res.json();
+          console.log("🔍 /api/logs 返回数据：", json);
+
+          // 正确读取返回数组中的最新记录
+          const latest = json.data?.[0] ?? {};
+
+          issueTextarea.value = latest.issue_log ?? "";
+          sendTextarea.value = latest.send_log ?? "";
+
+          setStatus("已从服务器加载最新记录 ✓", "success");
+        } catch (err) {
+          console.error(err);
+          setStatus("加载日志失败。", "error");
         }
       }
 
