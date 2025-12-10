@@ -99,6 +99,24 @@
     </style>
   </head>
   <body>
+    <!-- ⭐ 新增：统一的手动保存按钮区域 -->
+    <div class="section" style="text-align: right">
+      <button
+        id="manual-save-btn"
+        style="
+          padding: 6px 16px;
+          border-radius: 4px;
+          border: none;
+          background: #f0127f;
+          color: #fff;
+          font-size: 14px;
+          cursor: pointer;
+        "
+      >
+        手动保存所有记录
+      </button>
+      <span id="manual-save-status" class="status"></span>
+    </div>
     <h1>订单积分工具（内部使用）</h1>
 
     <!-- 问题订单记录（自动保存） -->
@@ -210,35 +228,59 @@
           setStatus("加载日志失败，当前内容为空。", "error");
         }
       }
+      // 通用保存函数：被自动保存和手动保存共用
+      async function saveLogs(showType = "auto") {
+        try {
+          const res = await fetch("/api/logs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              issue_log: issueTextarea.value,
+              send_log: sendTextarea.value,
+            }),
+          });
+
+          if (!res.ok) throw new Error("save failed");
+
+          if (showType === "auto") {
+            setStatus("已自动保存最新记录", "success");
+          } else if (showType === "manual") {
+            const manualStatus = document.getElementById("manual-save-status");
+            manualStatus.textContent = "已手动保存 ✓";
+            manualStatus.className = "status status--success";
+            // 几秒后淡掉提示
+            setTimeout(() => {
+              manualStatus.textContent = "";
+              manualStatus.className = "status";
+            }, 3000);
+          }
+        } catch (err) {
+          console.error(err);
+          if (showType === "auto") {
+            setStatus("保存失败，请稍后重试", "error");
+          } else if (showType === "manual") {
+            const manualStatus = document.getElementById("manual-save-status");
+            manualStatus.textContent = "手动保存失败，请重试";
+            manualStatus.className = "status status--error";
+          }
+        }
+      }
 
       // 2）监听输入，自动保存到服务器（1.5 秒防抖）
       function setupAutoSave() {
         let timer;
-
-        async function saveNow() {
-          try {
-            const body = {
-              issue_log: issueTextarea.value,
-              send_log: sendTextarea.value,
-            };
-
-            const res = await fetch("/api/logs", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(body),
-            });
-
-            const json = await res.json();
-            if (!json.ok) throw new Error("not ok");
-
-            setStatus("已自动保存到服务器 ✅", "success");
-          } catch (err) {
-            console.error(err);
-            setStatus("保存失败，请稍后重试 ❌", "error");
-          }
+        function onChange() {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            saveLogs("auto");
+          }, 1500);
         }
+
+        issueTextarea.addEventListener("input", onChange);
+        sendTextarea.addEventListener("input", onChange);
+      }
 
         function onChange() {
           setStatus("正在编辑，稍后会自动保存……", "normal");
@@ -253,6 +295,15 @@
       document.addEventListener("DOMContentLoaded", () => {
         loadLogs();
         setupAutoSave();
+
+        // ⭐ 手动保存按钮
+        const manualSaveBtn = document.getElementById("manual-save-btn");
+        if (manualSaveBtn) {
+          manualSaveBtn.addEventListener("click", () => {
+            // 点击时立即保存，并显示“手动保存”的提示
+            saveLogs("manual");
+          });
+        }
       });
     </script>
   </body>
