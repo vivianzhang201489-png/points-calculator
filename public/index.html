@@ -153,10 +153,14 @@
       // 读取数据库中最近一条记录
       async function loadLogs() {
         try {
+          console.log("🔍 调用 /api/logs 读取数据...");
           const res = await fetch("/api/logs");
+          console.log("🔍 /api/logs 响应状态:", res.status);
           if (!res.ok) throw new Error("Failed to load");
 
           const data = await res.json();
+          console.log("🔍 /api/logs 返回数据:", data);
+
           issueTextarea.value = data.issue_log ?? "";
           sendTextarea.value = data.send_log ?? "";
         } catch (e) {
@@ -196,11 +200,9 @@
         }
       }
 
-      // 初始化（打开页面自动读取一次数据库）
-      document.addEventListener("DOMContentLoaded", () => {
-        loadLogs();
-        saveBtn.addEventListener("click", saveLogsManually);
-      });
+      // ✅ 直接在脚本结尾调用：确保每次打开页面都会读一次
+      loadLogs();
+      saveBtn.addEventListener("click", saveLogsManually);
     </script>
   </body>
 </html>
