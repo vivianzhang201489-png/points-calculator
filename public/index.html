@@ -363,7 +363,7 @@
         pointsHint.style.color = "#666";
       }
 
-      ["input",S "change"].forEach((evt) => {
+      ["input", "change"].forEach((evt) => {
         subtotalInput.addEventListener(evt, calcPoints);
         discountInput.addEventListener(evt, calcPoints);
         pointsPaidInput.addEventListener(evt, calcPoints);
