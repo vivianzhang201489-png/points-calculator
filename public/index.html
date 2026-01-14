@@ -330,7 +330,7 @@
 
         // 若没用积分：默认 100% 现金支付
         if (pointsPaid <= 0) {
-          const issued = Math.floor(netMerch * 0.05);
+          const issued = (netMerch * 0.05).toFixed(2);
           pointsSpan.textContent = String(issued);
           pointsHint.textContent = `商品净额 $${netMerch.toFixed(2)}，默认全现金支付（未填写积分支付）`;
           pointsHint.style.color = "#666";
@@ -356,14 +356,14 @@
 
         const cashRatio = cashPaid / totalPaid;
         const eligibleAmount = netMerch * cashRatio;
-        const issued = Math.floor(eligibleAmount * 0.05);
+        const issued = (eligibleAmount * 0.05).toFixed(2);
 
         pointsSpan.textContent = String(issued);
         pointsHint.textContent = `商品净额 $${netMerch.toFixed(2)} × 现金比例 ${(cashRatio * 100).toFixed(2)}% = 可发金额 $${eligibleAmount.toFixed(2)}`;
         pointsHint.style.color = "#666";
       }
 
-      ["input", "change"].forEach((evt) => {
+      ["input",S "change"].forEach((evt) => {
         subtotalInput.addEventListener(evt, calcPoints);
         discountInput.addEventListener(evt, calcPoints);
         pointsPaidInput.addEventListener(evt, calcPoints);
