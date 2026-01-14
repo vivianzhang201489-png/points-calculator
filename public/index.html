@@ -196,7 +196,6 @@
     <div class="layout">
       <h1>订单积分工具（内部使用）</h1>
       <div class="page-subtitle">
-        ·
         上方按钮<strong>手动保存记录</strong>，数据写入数据库；刷新页面会自动从数据库读取最近一次记录。
       </div>
 
@@ -239,10 +238,44 @@
           />
         </div>
 
-        <div class="points-row">
-          积分：
-          <span id="points-result" class="points-value">0.00</span>
+        <div class="field-group">
+          <label class="field-label" for="points-paid">
+            Points Paid（积分支付金额）<span
+              style="color: #666; font-weight: 400"
+              >（没用积分可留空）</span
+            >
+          </label>
+          <input
+            id="points-paid"
+            type="number"
+            placeholder="例如：45.00"
+            inputmode="decimal"
+          />
         </div>
+
+        <div class="field-group">
+          <label class="field-label" for="cash-paid">
+            Cash Paid（现金支付金额）<span style="color: #666; font-weight: 400"
+              >（如填写积分支付，此项必填）</span
+            >
+          </label>
+          <input
+            id="cash-paid"
+            type="number"
+            placeholder="例如：45.00"
+            inputmode="decimal"
+          />
+        </div>
+
+        <div class="points-row" style="margin-top: 10px">
+          积分（5%）：
+          <span id="points-result" class="points-value">0</span>
+        </div>
+
+        <div
+          id="points-hint"
+          style="margin-top: 6px; font-size: 13px; color: #666"
+        ></div>
       </div>
 
       <!-- 积分发放记录 -->
@@ -257,21 +290,85 @@
     </div>
 
     <script>
-      // ======= 积分计算 =======
+      // ======= 积分计算（更新版：积分支付部分不发积分） =======
       const subtotalInput = document.getElementById("subtotal");
       const discountInput = document.getElementById("discount");
-      const pointsSpan = document.getElementById("points-result");
+      const pointsPaidInput = document.getElementById("points-paid");
+      const cashPaidInput = document.getElementById("cash-paid");
 
-      function calcPoints() {
-        const subtotal = parseFloat(subtotalInput.value) || 0;
-        const discount = parseFloat(discountInput.value) || 0;
-        const base = Math.max(subtotal - discount, 0);
-        const points = base * 0.05; // 5% 积分比例
-        pointsSpan.textContent = points.toFixed(2);
+      const pointsSpan = document.getElementById("points-result");
+      const pointsHint = document.getElementById("points-hint");
+
+      function n(v) {
+        // 空 => 0；非法 => NaN
+        if (v === "" || v === null || v === undefined) return 0;
+        const num = Number(v);
+        return Number.isFinite(num) ? num : NaN;
       }
 
-      subtotalInput.addEventListener("input", calcPoints);
-      discountInput.addEventListener("input", calcPoints);
+      function calcPoints() {
+        const subtotal = n(subtotalInput.value);
+        const discount = n(discountInput.value);
+        const pointsPaid = n(pointsPaidInput?.value);
+        const cashPaid = n(cashPaidInput?.value);
+
+        // 基础校验
+        if (!Number.isFinite(subtotal) || subtotal < 0) {
+          pointsSpan.textContent = "0";
+          pointsHint.textContent = "Subtotal 请输入有效数字（≥ 0）";
+          pointsHint.style.color = "#c0392b";
+          return;
+        }
+        if (!Number.isFinite(discount) || discount < 0) {
+          pointsSpan.textContent = "0";
+          pointsHint.textContent = "Discount 请输入有效数字（≥ 0）";
+          pointsHint.style.color = "#c0392b";
+          return;
+        }
+
+        const netMerch = Math.max(subtotal - discount, 0); // 只在商品净额上发积分
+
+        // 若没用积分：默认 100% 现金支付
+        if (pointsPaid <= 0) {
+          const issued = Math.floor(netMerch * 0.05);
+          pointsSpan.textContent = String(issued);
+          pointsHint.textContent = `商品净额 $${netMerch.toFixed(2)}，默认全现金支付（未填写积分支付）`;
+          pointsHint.style.color = "#666";
+          return;
+        }
+
+        // 用了积分：两格都必须填
+        if (!Number.isFinite(cashPaid) || cashPaid <= 0) {
+          pointsSpan.textContent = "0";
+          pointsHint.textContent =
+            "如填写了 Points Paid，则 Cash Paid 必须填写且 > 0";
+          pointsHint.style.color = "#c0392b";
+          return;
+        }
+
+        const totalPaid = pointsPaid + cashPaid;
+        if (!Number.isFinite(totalPaid) || totalPaid <= 0) {
+          pointsSpan.textContent = "0";
+          pointsHint.textContent = "Points Paid + Cash Paid 必须 > 0";
+          pointsHint.style.color = "#c0392b";
+          return;
+        }
+
+        const cashRatio = cashPaid / totalPaid;
+        const eligibleAmount = netMerch * cashRatio;
+        const issued = Math.floor(eligibleAmount * 0.05);
+
+        pointsSpan.textContent = String(issued);
+        pointsHint.textContent = `商品净额 $${netMerch.toFixed(2)} × 现金比例 ${(cashRatio * 100).toFixed(2)}% = 可发金额 $${eligibleAmount.toFixed(2)}`;
+        pointsHint.style.color = "#666";
+      }
+
+      ["input", "change"].forEach((evt) => {
+        subtotalInput.addEventListener(evt, calcPoints);
+        discountInput.addEventListener(evt, calcPoints);
+        pointsPaidInput.addEventListener(evt, calcPoints);
+        cashPaidInput.addEventListener(evt, calcPoints);
+      });
 
       // ======= 日志加载 / 保存（手动） =======
       const issueTextarea = document.getElementById("issue-log");
