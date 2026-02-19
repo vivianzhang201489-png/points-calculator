@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+
+  <defs>
+    <mask id="hole">
+      <rect width="64" height="64" fill="white"/>
+      <polygon
+        points="32,14 36,26 49,26 38,33 42,46 32,38 22,46 26,33 15,26 28,26"
+        fill="black"
+      />
+    </mask>
+  </defs>
+
+  <rect
+    x="4" y="4" width="56" height="56" rx="14"
+    fill="#ff1c77"
+    mask="url(#hole)"
+  />
+
+  <g mask="url(#hole)">
+    <line x1="16" y1="40" x2="28" y2="40"
+          stroke="#ffc1d6" stroke-width="3" stroke-linecap="round"/>
+
+    <line x1="16" y1="46" x2="36" y2="46"
+          stroke="#ffc1d6" stroke-width="3" stroke-linecap="round"/>
+
+    <line x1="16" y1="52" x2="44" y2="52"
+          stroke="#ffc1d6" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+</svg>
